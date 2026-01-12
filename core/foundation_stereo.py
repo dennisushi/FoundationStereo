@@ -7,9 +7,10 @@
 # license agreement from NVIDIA CORPORATION is strictly prohibited.
 
 
-import torch,pdb,logging,timm
+import torch
 import torch.nn as nn
 import torch.nn.functional as F
+import torchvision
 import sys,os
 code_dir = os.path.dirname(os.path.realpath(__file__))
 sys.path.append(f'{code_dir}/../')
@@ -19,19 +20,11 @@ from core.geometry import Combined_Geo_Encoding_Volume
 from core.submodule import *
 from core.utils.utils import *
 from Utils import *
-import time,huggingface_hub
+import huggingface_hub
 
 
-try:
-    autocast = torch.cuda.amp.autocast
-except:
-    class autocast:
-        def __init__(self, enabled):
-            pass
-        def __enter__(self):
-            pass
-        def __exit__(self, *args):
-            pass
+autocast = get_autocast
+
 
 
 def normalize_image(img):
@@ -133,14 +126,14 @@ class FoundationStereo(nn.Module, huggingface_hub.PyTorchModelHubMixin):
         self.cv_group = 8
         volume_dim = 28
 
-        self.cnet = ContextNetDino(args, output_dim=[args.hidden_dims, context_dims], downsample=args.n_downsample)
+        self.cnet = freeze_model(ContextNetDino(args, output_dim=[args.hidden_dims, context_dims], downsample=args.n_downsample))
         self.update_block = BasicSelectiveMultiUpdateBlock(self.args, self.args.hidden_dims[0], volume_dim=volume_dim)
-        self.sam = SpatialAttentionExtractor()
-        self.cam = ChannelAttentionEnhancement(self.args.hidden_dims[0])
+        self.sam = freeze_model(SpatialAttentionExtractor())
+        self.cam = freeze_model(ChannelAttentionEnhancement(self.args.hidden_dims[0]))
 
         self.context_zqr_convs = nn.ModuleList([nn.Conv2d(context_dims[i], args.hidden_dims[i]*3, kernel_size=3, padding=3//2) for i in range(self.args.n_gru_layers)])
 
-        self.feature = Feature(args)
+        self.feature = freeze_model(Feature(args))
         self.proj_cmb = nn.Conv2d(self.feature.d_out[0], 12, kernel_size=1, padding=0)
 
         self.stem_2 = nn.Sequential(
@@ -191,17 +184,22 @@ class FoundationStereo(nn.Module, huggingface_hub.PyTorchModelHubMixin):
         return up_disp.float()
 
 
-    def forward(self, image1, image2, iters=12, flow_init=None, test_mode=False, low_memory=False, init_disp=None):
+    def forward(self, image1, image2, iters=12, flow_init=None, test_mode=False, low_memory=None, init_disp=None):
         """ Estimate disparity between pair of frames """
         B = len(image1)
-        low_memory = low_memory or (self.args.get('low_memory', False))
+        if low_memory is None:
+            low_memory = True
+        low_memory = low_memory or bool(self.args.get('low_memory', False))
         image1 = normalize_image(image1)
         image2 = normalize_image(image2)
         with autocast(enabled=self.args.mixed_precision):
-            out, vit_feat = self.feature(torch.cat([image1, image2], dim=0))
+            image_cat = torch.cat([image1, image2], dim=0)
+            out, vit_feat = self.feature(image_cat)
             vit_feat = vit_feat[:B]
             features_left = [o[:B] for o in out]
             features_right = [o[B:] for o in out]
+            right_lvl0 = features_right[0]
+            del out, image_cat
             stem_2x = self.stem_2(image1)
 
             gwc_volume = build_gwc_volume(features_left[0], features_right[0], self.args.max_disp//4, self.cv_group)  # Group-wise correlation volume (B, N_group, max_disp, H, W)
@@ -209,15 +207,18 @@ class FoundationStereo(nn.Module, huggingface_hub.PyTorchModelHubMixin):
             right_tmp = self.proj_cmb(features_right[0])
             concat_volume = build_concat_volume(left_tmp, right_tmp, maxdisp=self.args.max_disp//4)
             del left_tmp, right_tmp
+            del features_right
             comb_volume = torch.cat([gwc_volume, concat_volume], dim=1)
+            del gwc_volume, concat_volume
             comb_volume = self.corr_stem(comb_volume)
             comb_volume = self.corr_feature_att(comb_volume, features_left[0])
             comb_volume = self.cost_agg(comb_volume, features_left)
 
             # Init disp from geometry encoding volume
-            prob = F.softmax(self.classifier(comb_volume).squeeze(1), dim=1)  #(B, max_disp, H, W)
             if init_disp is None:
+              prob = F.softmax(self.classifier(comb_volume).squeeze(1), dim=1)  #(B, max_disp, H, W)
               init_disp = disparity_regression(prob, self.args.max_disp//4)  # Weighted  sum of disparity
+              del prob
 
             cnet_list = self.cnet(image1, vit_feat=vit_feat, num_layers=self.args.n_gru_layers)   #(1/4, 1/8, 1/16)
             cnet_list = list(cnet_list)
@@ -225,8 +226,10 @@ class FoundationStereo(nn.Module, huggingface_hub.PyTorchModelHubMixin):
             inp_list = [torch.relu(x[1]) for x in cnet_list]   # Context information list of pyramid levels
             inp_list = [self.cam(x) * x for x in inp_list]
             att = [self.sam(x) for x in inp_list]
+            del cnet_list, vit_feat
 
-        geo_fn = Combined_Geo_Encoding_Volume(features_left[0].float(), features_right[0].float(), comb_volume.float(), num_levels=self.args.corr_levels, dx=self.dx)
+        geo_fn = Combined_Geo_Encoding_Volume(features_left[0].float(), right_lvl0.float(), comb_volume.float(), num_levels=self.args.corr_levels, dx=self.dx)
+        del comb_volume, right_lvl0
         b, c, h, w = features_left[0].shape
         coords = torch.arange(w, dtype=torch.float, device=init_disp.device).reshape(1,1,w,1).repeat(b, h, 1, 1)  # (B,H,W,1) Horizontal only
         disp = init_disp.float()

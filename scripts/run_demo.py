@@ -33,6 +33,7 @@ if __name__=="__main__":
   parser.add_argument('--denoise_cloud', type=int, default=1, help='whether to denoise the point cloud')
   parser.add_argument('--denoise_nb_points', type=int, default=30, help='number of points to consider for radius outlier removal')
   parser.add_argument('--denoise_radius', type=float, default=0.03, help='radius to use for outlier removal')
+  parser.add_argument('--mixed_precision', type=int, default=0, help='use mixed precision')
   args = parser.parse_args()
 
   set_logging_format()
@@ -52,7 +53,7 @@ if __name__=="__main__":
 
   model = FoundationStereo(args)
 
-  ckpt = torch.load(ckpt_dir)
+  ckpt = torch.load(ckpt_dir, weights_only=False)
   logging.info(f"ckpt global_step:{ckpt['global_step']}, epoch:{ckpt['epoch']}")
   model.load_state_dict(ckpt['model'])
 

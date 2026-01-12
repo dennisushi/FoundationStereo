@@ -14,7 +14,9 @@ import numpy as np
 code_dir = os.path.dirname(os.path.realpath(__file__))
 sys.path.append(f'{code_dir}/../')
 from Utils import *
+from core.utils.utils import get_autocast
 
+autocast = get_autocast
 
 def _is_contiguous(tensor: torch.Tensor) -> bool:
     if torch.jit.is_scripting():
@@ -388,7 +390,7 @@ def groupwise_correlation(fea1, fea2, num_groups):
     channels_per_group = C // num_groups
     fea1 = fea1.reshape(B, num_groups, channels_per_group, H, W)
     fea2 = fea2.reshape(B, num_groups, channels_per_group, H, W)
-    with torch.cuda.amp.autocast(enabled=False):
+    with autocast(enabled=False):
       cost = (F.normalize(fea1.float(), dim=2) * F.normalize(fea2.float(), dim=2)).sum(dim=2)  #!NOTE Divide first for numerical stability
     assert cost.shape == (B, num_groups, H, W)
     return cost

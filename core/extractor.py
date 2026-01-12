@@ -13,8 +13,8 @@ import torch.nn.functional as F
 code_dir = os.path.dirname(os.path.realpath(__file__))
 sys.path.append(f'{code_dir}/../')
 from core.submodule import *
+from core.third_party.edgenext import build_edgenext_small
 from Utils import *
-import timm
 
 
 class ResidualBlock(nn.Module):
@@ -324,9 +324,11 @@ class Feature(nn.Module):
     def __init__(self, args):
         super(Feature, self).__init__()
         self.args = args
-        model = timm.create_model('edgenext_small', pretrained=True, features_only=False)
-        self.stem = model.stem
-        self.stages = model.stages
+        backbone = build_edgenext_small(pretrained=True)
+        backbone = freeze_model(backbone)
+        self.stem = backbone.stem
+        self.stages = backbone.stages
+        del backbone
         chans = [48, 96, 160, 304]
         self.chans = chans
         self.dino = DepthAnythingFeature(encoder=self.args.vit_size)

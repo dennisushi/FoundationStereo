@@ -16,7 +16,6 @@ dependencies:
     - opencv-contrib-python
     - imgaug
     - ninja
-    - timm
     - albumentations
     - jupyterlab
     - scipy
@@ -28,7 +27,6 @@ dependencies:
     - imageio
     - open3d
     - transformations
-    - einops
     - gdown
     - nodejs
     - xformers==0.0.28.post1

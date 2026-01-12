@@ -13,6 +13,8 @@ import torch.nn.functional as F
 import numpy as np
 from scipy import interpolate
 
+def get_autocast(enabled):
+    return torch.amp.autocast(device_type="cuda", enabled=bool(enabled), dtype=torch.float16)
 
 class InputPadder:
     """ Pads images such that dimensions are divisible by 8 """
