@@ -13,9 +13,9 @@ import torch.nn.functional as F
 code_dir = os.path.dirname(os.path.realpath(__file__))
 sys.path.append(f'{code_dir}/../')
 import numpy as np
-from core.submodule import LayerNorm2d, BasicConv, Conv2x_IN
-from Utils import get_resize_keep_aspect_ratio, freeze_model
-import timm
+from core.submodule import *
+from core.third_party.edgenext import build_edgenext_small
+from Utils import *
 
 
 class ResidualBlock(nn.Module):
