@@ -13,8 +13,6 @@ import torch.nn.functional as F
 import numpy as np
 code_dir = os.path.dirname(os.path.realpath(__file__))
 sys.path.append(f'{code_dir}/../')
-from Utils import *
-from core.utils.utils import get_autocast
 
 autocast = get_autocast
 
