@@ -8,26 +8,19 @@
 
 
 import os,sys
-import argparse
-import imageio
-import torch
-import logging
-import cv2
-import numpy as np
-import open3d as o3d
 code_dir = os.path.dirname(os.path.realpath(__file__))
 sys.path.append(f'{code_dir}/../')
 import argparse
 import torch
 import numpy as np
-import imageio
+import imageio.v2
 import cv2
 import open3d as o3d
 import logging
 from omegaconf import OmegaConf
 from core.utils.utils import InputPadder
-from Utils import set_logging_format, set_seed, vis_disparity, depth2xyzmap, toOpen3dCloud
-from core.foundation_stereo import FoundationStereo
+from Utils import *
+from core.foundation_stereo import *
 
 
 if __name__=="__main__":
@@ -75,8 +68,8 @@ if __name__=="__main__":
   model.eval()
 
   code_dir = os.path.dirname(os.path.realpath(__file__))
-  img0 = imageio.imread(args.left_file)
-  img1 = imageio.imread(args.right_file)
+  img0 = imageio.v2.imread(args.left_file)
+  img1 = imageio.v2.imread(args.right_file)
   scale = args.scale
   assert scale<=1, "scale must be <=1"
   img0 = cv2.resize(img0, fx=scale, fy=scale, dsize=None)
@@ -90,7 +83,7 @@ if __name__=="__main__":
   padder = InputPadder(img0.shape, divis_by=32, force_square=False)
   img0, img1 = padder.pad(img0, img1)
 
-  with torch.cuda.amp.autocast(True):
+  with torch.amp.autocast('cuda'):
     if not args.hiera:
       disp = model.forward(img0, img1, iters=args.valid_iters, test_mode=True)
     else:
@@ -99,7 +92,7 @@ if __name__=="__main__":
   disp = disp.data.cpu().numpy().reshape(H,W)
   vis = vis_disparity(disp)
   vis = np.concatenate([img0_ori, vis], axis=1)
-  imageio.imwrite(f'{args.out_dir}/vis.png', vis)
+  imageio.v2.imwrite(f'{args.out_dir}/vis.png', vis)
   logging.info(f"Output saved to {args.out_dir}")
 
   if args.remove_invisible:
