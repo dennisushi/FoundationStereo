@@ -1,0 +1,41 @@
+[project]
+name = "foundation-stereo"
+version = "0.1.0"
+description = "FoundationStereo: Zero-Shot Stereo Matching"
+readme = "readme.md"
+requires-python = ">=3.10"
+authors = [
+    {name = "NVIDIA CORPORATION"}
+]
+license = {text = "Proprietary"}
+
+dependencies = [
+    "torch>=2.0.0",
+    "torchvision",
+    "numpy>=1.20.0",
+    "opencv-python>=4.5.0",
+    "opencv-contrib-python>=4.5.0",
+    "omegaconf>=2.0.0",
+    "imageio>=2.0.0",
+    "open3d>=0.15.0",
+    "scipy>=1.7.0",
+    "scikit-image>=0.18.0",
+    "trimesh>=3.0.0",
+    "huggingface-hub>=0.10.0",
+    "xformers>=0.0.20",
+]
+
+[build-system]
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools]
+# Use find_packages to automatically discover all packages
+# This will find foundation_stereo and all subpackages (utils, third_party)
+packages = { find = {} }
+
+[tool.setuptools.package-data]
+foundation_stereo = [
+    "third_party/weights/*",
+]
+
