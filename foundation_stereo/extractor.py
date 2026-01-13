@@ -7,15 +7,15 @@
 # license agreement from NVIDIA CORPORATION is strictly prohibited.
 
 
-import torch,logging,os,sys,urllib,warnings
+import torch
+import os
 import torch.nn as nn
 import torch.nn.functional as F
-code_dir = os.path.dirname(os.path.realpath(__file__))
-sys.path.append(f'{code_dir}/../')
 import numpy as np
-from core.submodule import *
-from core.third_party.edgenext import build_edgenext_small
-from Utils import *
+
+from .submodule import *
+from .third_party.edgenext import build_edgenext_small
+from .utils import *
 
 
 class ResidualBlock(nn.Module):

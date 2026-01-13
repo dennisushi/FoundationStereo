@@ -7,11 +7,10 @@
 # license agreement from NVIDIA CORPORATION is strictly prohibited.
 
 
-import torch,pdb,os,sys
+import torch
 import torch.nn.functional as F
-from core.utils.utils import bilinear_sampler
-code_dir = os.path.dirname(os.path.realpath(__file__))
-sys.path.append(f'{code_dir}/../')
+
+from .utils.utils import bilinear_sampler
 
 class Combined_Geo_Encoding_Volume:
     def __init__(self, init_fmap1, init_fmap2, geo_volume, num_levels=2, dx=None):

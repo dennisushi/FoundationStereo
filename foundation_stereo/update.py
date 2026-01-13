@@ -7,12 +7,11 @@
 # license agreement from NVIDIA CORPORATION is strictly prohibited.
 
 
-import torch,pdb,os,sys
+import torch
 import torch.nn as nn
 import torch.nn.functional as F
-code_dir = os.path.dirname(os.path.realpath(__file__))
-sys.path.append(f'{code_dir}/../')
-from core.submodule import EdgeNextConvEncoder
+
+from .submodule import EdgeNextConvEncoder
 
 class DispHead(nn.Module):
     def __init__(self, input_dim=128, hidden_dim=256, output_dim=1):

@@ -18,9 +18,8 @@ import cv2
 import open3d as o3d
 import logging
 from omegaconf import OmegaConf
-from core.utils.utils import InputPadder
-from Utils import *
-from core.foundation_stereo import *
+from foundation_stereo.utils.utils import *
+from foundation_stereo.foundation_stereo import *
 
 
 if __name__=="__main__":
